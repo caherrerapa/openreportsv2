@@ -1,0 +1,285 @@
+Index: WebRoot/EditProperties.jsp
+===================================================================
+--- WebRoot/EditProperties.jsp	(revision 9)
++++ WebRoot/EditProperties.jsp	(working copy)
+@@ -75,6 +75,14 @@
+ 	  </td>
+     </tr>
+     <tr>
++      <td class="boldText"><s:text name="label.mailPort"/></td>
++      <td>
++      </td>
++      <td>
++		<input type="text" size="60" name="mailPort" value="<s:property value="mailPort"/>">		
++	  </td>
++    </tr>
++    <tr>
+       <td class="boldText"><s:text name="label.useMailAuthenticator"/></td>
+       <td>
+       	<img id="mailauthenticator" src="images/help.gif" title="<s:text name="tooltip.properties.mailAuthenticator"/>">   
+@@ -83,6 +91,15 @@
+ 		<s:checkbox name="mailAuthenticatorUsed" fieldValue="true" theme="simple"/> 
+ 	  </td>
+     </tr>
++    <tr>
++      <td class="boldText"><s:text name="label.useMailTls"/></td>
++      <td>
++      	<img id="mailauthenticator" src="images/help.gif" title="<s:text name="tooltip.properties.mailTls"/>">   
++      </td>
++      <td>
++		<s:checkbox name="mailTlsUsed" fieldValue="true" theme="simple"/> 
++	  </td>
++    </tr>
+ 	<tr>
+       <td class="boldText"><s:text name="label.mailAuthenticatorUser"/></td>
+       <td>
+Index: WebRoot/QueryReport.jsp
+===================================================================
+--- WebRoot/QueryReport.jsp	(revision 9)
++++ WebRoot/QueryReport.jsp	(working copy)
+@@ -1,3 +1,4 @@
++<%@ page language="java" pageEncoding="utf-8"%>
+ <%@ taglib prefix="s" uri="/struts-tags" %>
+ <%@ taglib uri="http://displaytag.sf.net" prefix="display" %>
+ <%@page import="org.efs.openreports.util.DisplayProperty"%>
+@@ -33,7 +34,7 @@
+     <% } %>
+     <display:setProperty name="export.pdf" value="true"/>
+ 	<display:setProperty name="export.xml" value="false"/>
+-	<display:setProperty name="export.pdf.filename" value="<%=report.getName() + ".pdf"%>"/>
++	<display:setProperty name="export.pdf.filename"  value="<%=report.getName() + ".pdf"%>"/>
+ 	<display:setProperty name="export.csv.filename" value="<%=report.getName() + ".csv"%>"/>
+ 	<display:setProperty name="export.excel.filename" value="<%=report.getName() + ".xls"%>"/>	  
+   </display:table>
+Index: WebRoot/WEB-INF/lib/barbecue-1.5-beta1.jar
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: WebRoot/WEB-INF/lib/barbecue-1.5-beta1.jar
+===================================================================
+--- WebRoot/WEB-INF/lib/barbecue-1.5-beta1.jar	(revision 0)
++++ WebRoot/WEB-INF/lib/barbecue-1.5-beta1.jar	(working copy)
+
+Property changes on: WebRoot/WEB-INF/lib/barbecue-1.5-beta1.jar
+___________________________________________________________________
+Added: svn:mime-type
+## -0,0 +1 ##
++application/octet-stream
+Index: WebRoot/WEB-INF/lib/garuda.jar
+===================================================================
+Cannot display: file marked as a binary type.
+svn:mime-type = application/octet-stream
+Index: WebRoot/WEB-INF/lib/garuda.jar
+===================================================================
+--- WebRoot/WEB-INF/lib/garuda.jar	(revision 0)
++++ WebRoot/WEB-INF/lib/garuda.jar	(working copy)
+
+Property changes on: WebRoot/WEB-INF/lib/garuda.jar
+___________________________________________________________________
+Added: svn:mime-type
+## -0,0 +1 ##
++application/octet-stream
+Index: database/hsql/openreports.script
+===================================================================
+--- database/hsql/openreports.script	(revision 9)
++++ database/hsql/openreports.script	(working copy)
+@@ -301,6 +301,8 @@
+ INSERT INTO OR_PROPERTIES VALUES(11,'xmla.catalog','SampleData')
+ INSERT INTO OR_PROPERTIES VALUES(12,'xmla.datasource','Provider=Mondrian;DataSource=SampleData')
+ INSERT INTO OR_PROPERTIES VALUES(13,'xmla.uri','http://localhost:8080/openreports/xmla')
++INSERT INTO OR_PROPERTIES VALUES(14,'mail.smtp.port','25')
++INSERT INTO OR_PROPERTIES VALUES(15,'mail.smtp.starttls.enable','true')
+ INSERT INTO REPORT_ALERT VALUES(2,'Budget Variance Alert','Budget Variance Alert','select sum(variance) from quadrant_actuals',2)
+ INSERT INTO REPORT_ALERT VALUES(3,'Motorcycle Inventory Alert','Motorcycle Inventory Alert','select sum(quantityinstock)\u000d\u000afrom products \u000d\u000awhere productline = ''Motorcycles''',2)
+ INSERT INTO USER_ALERT_MAP VALUES(0,2,-250000,'<',0,33)
+Index: src/LocalStrings.properties
+===================================================================
+--- src/LocalStrings.properties	(revision 9)
++++ src/LocalStrings.properties	(working copy)
+@@ -150,7 +150,9 @@
+ label.dateFormat=Date Format	  	
+ label.queryReportMaxRows=Query Report Max Rows
+ label.mailHost=Mail Host
++label.mailPort=Mail Port
+ label.useMailAuthenticator=Use Mail Authenticator
++label.useMailTls=Use Mail TLS
+ label.mailAuthenticatorUser=Mail Authenticator UserName	  	
+ label.mailAuthenticatorPassword=Mail Authenticator Password	  	
+ label.xmlaURI=XMLA URI 	  	
+@@ -361,6 +363,7 @@
+ tooltip.properties.maxRows=Maximum number of rows returned per QueryReport
+ tooltip.properties.mailhost=Mail Host required for scheduled reports
+ tooltip.properties.mailAuthenticator=Check this box if your Mail Host requires a UserName and Password	
++tooltip.properties.mailTls=Check this box if you are using gmail or other vendor that requires TLS
+ 
+ tooltip.alert.query=Alert SQL Query. Must return an Integer. For example: SELECT count(*) FROM address
+ 
+Index: src/org/efs/openreports/actions/admin/EditPropertiesAction.java
+===================================================================
+--- src/org/efs/openreports/actions/admin/EditPropertiesAction.java	(revision 9)
++++ src/org/efs/openreports/actions/admin/EditPropertiesAction.java	(working copy)
+@@ -42,7 +42,10 @@
+ 	private String baseDirectory;
+ 	private String tempDirectory;
+ 	private String mailHost;
++	private String mailPort;
+ 	private boolean mailAuthenticatorUsed;
++	private boolean mailTlsUsed;
++	
+ 	private String mailUser;
+ 	private String mailPassword;	
+ 	private String maxRows;
+@@ -73,9 +76,15 @@
+ 
+ 				ORProperty property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_HOST);
+ 				if (property != null) mailHost = property.getValue();
++				
++				property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_PORT);
++				if (property != null) mailPort = property.getValue();
+ 
+ 				property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_AUTH);
+ 				if (property != null) mailAuthenticatorUsed = new Boolean(property.getValue()).booleanValue();
++				
++				property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_ENABLE_TLS);
++				if (property != null) mailTlsUsed = new Boolean(property.getValue()).booleanValue();
+ 
+ 				property = propertiesProvider.getProperty(ORProperty.MAIL_AUTH_USER);
+ 				if (property != null) mailUser = property.getValue();
+@@ -139,8 +148,14 @@
+ 			propertiesProvider.setProperty(ORProperty.MAIL_SMTP_AUTH, String.valueOf(mailAuthenticatorUsed));
+ 			mailProvider.setUseMailAuthenticator(mailAuthenticatorUsed);
+ 			
++			propertiesProvider.setProperty(ORProperty.MAIL_SMTP_ENABLE_TLS, String.valueOf(mailTlsUsed));
++			mailProvider.setEnableTls(mailTlsUsed);
++			
+ 			propertiesProvider.setProperty(ORProperty.MAIL_SMTP_HOST, mailHost);
+-			if (mailHost != null) mailProvider.setMailHost(mailHost);			
++			if (mailHost != null) mailProvider.setMailHost(mailHost);
++			
++			propertiesProvider.setProperty(ORProperty.MAIL_SMTP_PORT, mailPort);
++			if (mailHost != null) mailProvider.setMailPort(mailPort);
+ 									
+ 			propertiesProvider.setProperty(ORProperty.QUERYREPORT_MAXROWS, maxRows);
+             propertiesProvider.setProperty(ORProperty.XMLA_CATALOG, xmlaCatalog);
+@@ -195,6 +210,14 @@
+ 	{
+ 		this.mailAuthenticatorUsed = mailAuthenticatorUsed;
+ 	}
++	
++	public boolean isMailTlsUsed() {
++		return mailTlsUsed;
++	}
++
++	public void setMailTlsUsed(boolean mailTlsUsed) {
++		this.mailTlsUsed = mailTlsUsed;
++	}
+ 
+ 	public String getMailHost()
+ 	{
+@@ -206,11 +229,19 @@
+ 		this.mailHost = mailHost;
+ 	}
+ 
++	public String getMailPort() {
++		return mailPort;
++	}
++
++	public void setMailPort(String mailPort) {
++		this.mailPort = mailPort;
++	}
++
+ 	public String getMailPassword()
+ 	{
+ 		return mailPassword;
+ 	}
+-
++	
+ 	public void setMailPassword(String mailPassword)
+ 	{
+ 		this.mailPassword = mailPassword;
+Index: src/org/efs/openreports/objects/ORProperty.java
+===================================================================
+--- src/org/efs/openreports/objects/ORProperty.java	(revision 9)
++++ src/org/efs/openreports/objects/ORProperty.java	(working copy)
+@@ -26,7 +26,9 @@
+ 	public static final String DATE_FORMAT = "date.format";
+ 	public static final String BASE_DIRECTORY = "base.directory";
+ 	public static final String MAIL_SMTP_HOST = "mail.smtp.host";
++	public static final String MAIL_SMTP_PORT = "mail.smtp.port";
+ 	public static final String MAIL_SMTP_AUTH = "mail.smtp.auth";
++	public static final String MAIL_SMTP_ENABLE_TLS = "mail.smtp.starttls.enable";
+ 	public static final String MAIL_AUTH_USER = "mail.auth.user";
+ 	public static final String MAIL_AUTH_PASSWORD = "mail.auth.password";		
+ 	public static final String TEMP_DIRECTORY = "temp.directory";
+Index: src/org/efs/openreports/providers/MailProvider.java
+===================================================================
+--- src/org/efs/openreports/providers/MailProvider.java	(revision 9)
++++ src/org/efs/openreports/providers/MailProvider.java	(working copy)
+@@ -44,6 +44,8 @@
+ 	private PropertiesProvider propertiesProvider;
+ 
+ 	private String mailHost;
++	private String mailPort;
++	private boolean enableTls;
+ 	private boolean useMailAuthenticator;
+ 	private String userName;
+ 	private String password;
+@@ -64,10 +66,16 @@
+ 
+ 		ORProperty property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_HOST);
+ 		if (property != null) mailHost = property.getValue();
++		
++		property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_PORT);
++		if (property != null) mailPort = property.getValue();
+ 
+ 		property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_AUTH);		
+ 		if (property != null) useMailAuthenticator = Boolean.valueOf(property.getValue()).booleanValue();
+ 		
++		property = propertiesProvider.getProperty(ORProperty.MAIL_SMTP_ENABLE_TLS);		
++		if (property != null) enableTls = Boolean.valueOf(property.getValue()).booleanValue();
++		
+ 		property = propertiesProvider.getProperty(ORProperty.MAIL_AUTH_USER);
+ 		if (property != null) userName = property.getValue();
+ 		
+@@ -86,14 +94,20 @@
+ 				// create a session
+ 				Properties mailProps = new Properties();
+ 				mailProps.put("mail.smtp.host", mailHost);
+-            
++				mailProps.put("mail.smtp.port", mailPort);
++				
+ 				if (mail.getBounceAddress() != null && mail.getBounceAddress().trim().length() > 0)
+ 				{
+ 					mailProps.setProperty("mail.smtp.from", mail.getBounceAddress()); 
+ 				}      
+-
+ 				if (useMailAuthenticator) 
+ 				{
++					if(enableTls) {
++						mailProps.put("mail.smtp.starttls.enable", "true");
++						mailProps.put("mail.smtp.starttls.required", "true");
++					}
++					mailProps.put("mail.smtp.auth", "true");
++					
+ 					mailSession = Session.getInstance(mailProps, new SMTPAuthenticator(userName, password));				
+ 				}
+ 				else
+@@ -242,4 +256,17 @@
+ 		this.mailSession = mailSession;
+ 	}
+ 
++	public void setMailPort(String mailPort) {
++		this.mailPort = mailPort;
++	}
++
++	public boolean isEnableTls() {
++		return enableTls;
++	}
++
++	public void setEnableTls(boolean enableTls) {
++		this.enableTls = enableTls;
++	}
++	
++
+ }
+\ No newline at end of file
